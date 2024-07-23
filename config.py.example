@@ -1,0 +1,18 @@
+#how to connect to splunk. Password is empty if Splunk Free
+HOST = "splunk"
+PORT = 8089
+USERNAME = "admin"
+#empty password, because there is no account management with Splunk free
+PASSWORD = ""
+#only look for scheduled searches in this specific app
+SPLUNKAPP="myApp"
+#where to write logs
+LOGFILE = "/var/logs/splasch.log"
+#the database file to store suppressing informations
+DBFILE = "/var/lib/splasch/splasch.db"
+#your pushbullet API key
+PUSHBULLET_APIKEY = "123456"
+#the home page of your splunk instance
+ALERT_LINK = "https://splunk.homedomain.net"
+#enable DEBUG logging, or not
+DEBUG = False
