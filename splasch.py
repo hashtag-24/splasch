@@ -61,7 +61,7 @@ def SplunkAlertScheduler():
         exit(1)
 
     if splunk_health not in ["green", "yellow"]:
-        u.send_alert("MONIT: health info is " + str(splunk_health), {"status": "warning"}, "/app/search")
+        u.log("MONIT: health info is " + str(splunk_health), ident=run_id)
 
     json_output["splunk_health"] = splunk_health
 
@@ -117,7 +117,12 @@ def SplunkAlertScheduler():
                 # If suppress is enabled for this rule, first check if we need to suppress this result
                 if u.get(ss, "splasch_suppress_field"):
                     suppress_until = run_time + (60 * int(ss["splasch_suppress_minutes"]))
-                    suppress_value = item[ss["splasch_suppress_field"]]
+                    try:
+                        suppress_value = item[ss["splasch_suppress_field"]]
+                    except KeyError:
+                        rule_output["messages"].append("ERROR suppress key not found")
+                        rule_output["results"]["failure"] += 1
+                        continue
                     # If suppress is necessary, loop to the next result
                     if u.should_suppress(dbconn, ss["name"], suppress_value, int(run_time)):
                         rule_output["results"]["suppressed"] += 1
@@ -149,7 +154,8 @@ def SplunkAlertScheduler():
         u.log(str(executed_rules) + " rule(s) were ran successfully.", ident=run_id)
     elif len(json_rules_output)>0:
         # searches were ran but none were successful
-        u.run_failed(pb, json_output, "All rules failed to be executed", "", run_id)
+        u.run_failed(None, json_output, "All rules failed to be executed", "", run_id)
+        exit(1)
     else:
         u.log("No rule has been run.", ident=run_id)
     

@@ -75,9 +75,11 @@ def add_suppress_line(dbcon, name, value, until):
 def should_suppress(dbcon, name, value, run_time):
     """ Query suppress database to know if  """
     """ trigger should be suppressed or not """
+    if not value:
+        return False
     cursor = dbcon.cursor()
     res = cursor.execute("SELECT ID from alert_suppress where NAME=\"" + name + "\" AND VALUE=\"" + value + "\" AND " + str(run_time) + " < UNTIL" )
-    return  not (res.fetchone() is None)
+    return not (res.fetchone() is None)
 
 
 def db_cleanup(dbcon, run_time):
