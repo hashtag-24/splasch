@@ -9,6 +9,7 @@ import re
 import uuid
 import time
 from pushbullet import Pushbullet
+from socket import gaierror
 from config import HOST, PORT, USERNAME, PASSWORD, SPLUNKAPP, DBFILE, PUSHBULLET_APIKEY
 
 
@@ -51,8 +52,18 @@ def SplunkAlertScheduler():
     try:
         service = client.connect(**splunk_connect)
     except ConnectionRefusedError as e:
-        u.run_failed(pb, json_output, "could not connect to splunk", str(e), run_id)
+        u.run_failed(pb, json_output, "could not connect to splunk: connection refused", str(e), run_id)
         exit(1)
+    except gaierror as e:
+        # only send alert if splunk should be up
+        if u.get_splunk_status() != "down":
+            u.run_failed(pb, json_output, "could not connect to splunk", str(e), run_id)
+            u.set_splunk_status("down")
+        exit(1)
+
+    # if connection successful, set splunk as up if it is not already
+    if u.get_splunk_status() != "up":
+        u.set_splunk_status("up")
 
     try:
         splunk_health = service.info["health_info"]
@@ -131,7 +142,7 @@ def SplunkAlertScheduler():
                     u.add_suppress_line(dbconn, ss["name"], suppress_value, suppress_until)
 
                 # Actual sending of the alert, only output requested fields
-                sent_to = u.send_alert(pb, ss["name"], item, rule_output["job"]["link"], u.get(ss, "splasch_output_fields"))
+                sent_to = u.send_alert(pb, ss["name"], item, rule_output["job"]["link"], u.get(ss, "splasch_output_fields"), run_id=run_id)
                 # Increment relevant counters
                 if sent_to :
                     rule_output["results"]["success"] += 1

@@ -3,10 +3,10 @@ import sys
 import time
 import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from urllib.parse import quote
 import splunklib.results as results
-from config import LOGFILE, ALERT_LINK, DEBUG
+from config import LOGFILE, ALERT_LINK, DEBUG, SPLUNK_STATUS_FILE
 
 def log(msg, force=False, ident=""):
     """ log a message to LOGFILE """
@@ -52,7 +52,7 @@ def format_message(event, fields=None):
     return "\n".join(message)
 
 
-def send_alert(pb, title, event, results_link=None, fields=None):
+def send_alert(pb, title, event, results_link=None, fields=None, run_id=""):
     """ Actually send the pushbullet alert """
     """ use event formatted to text        """
     """ include link to ALERT_LINK         """
@@ -61,7 +61,18 @@ def send_alert(pb, title, event, results_link=None, fields=None):
     else:
         uri_path =  "/app/search/search?q=" + quote("|savedsearch \"" + title + "\"")
     drilldown_link = ALERT_LINK + uri_path
-    res = pb.push_link("SPLaSCH ALERT: " + title, drilldown_link, format_message(event, fields))
+    # first: log event
+    log_event = {}
+    log_event["time"] = current_time()
+    log_event["run_ident"] = run_id
+    log_event["rule"] = title
+    log_event["message"] = "SPLaSCH ALERT"
+    log_event["drilldown_link"] = drilldown_link
+    log_event["event"] = str(event)
+    log(log_event, force=True)
+    # then: push alert
+    alert_title = "SPLaSCH ALERT: " + title
+    res = pb.push_link(alert_title, drilldown_link, format_message(event, fields))
     return res.get("receiver_email")
 
 
@@ -143,4 +154,21 @@ def run_failed(pb, json_output, msg, exception, run_id):
     log("ERROR: " + msg + ". Exiting.", ident=run_id)
     log(json_output, force=True)
     if pb:
-        send_alert(pb, "ERROR: " + msg, {"status":"error"}, "/app/search")
+        send_alert(pb, "ERROR: " + msg, {"status":"error"}, "/app/search", ident=run_id)
+
+
+def get_splunk_status():
+    with open(SPLUNK_STATUS_FILE) as f:
+        try:
+            return list(f)[-1].strip("\n").split(" ")[1] 
+        except:
+            log("ERROR: could not fetch Splunk status.", ident="")
+            return "unknown"
+
+def set_splunk_status(status):
+    try:
+        with open(SPLUNK_STATUS_FILE, "a") as f:
+            f.write(datetime.now(timezone.utc).isoformat() + " " + status + "\n")
+    except Exception:
+        log("ERROR: could not set Splunk status.", ident="")
+        pass

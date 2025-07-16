@@ -1,3 +1,5 @@
 config.py
 *.db
+log/
+splunk.status
 __pycache__
