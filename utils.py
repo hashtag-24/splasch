@@ -154,7 +154,7 @@ def run_failed(pb, json_output, msg, exception, run_id):
     log("ERROR: " + msg + ". Exiting.", ident=run_id)
     log(json_output, force=True)
     if pb:
-        send_alert(pb, "ERROR: " + msg, {"status":"error"}, "/app/search", ident=run_id)
+        send_alert(pb, "ERROR: " + msg, {"status":"error"}, "/app/search", run_id=run_id)
 
 
 def get_splunk_status():

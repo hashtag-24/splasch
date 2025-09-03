@@ -54,7 +54,7 @@ def SplunkAlertScheduler():
     except ConnectionRefusedError as e:
         u.run_failed(pb, json_output, "could not connect to splunk: connection refused", str(e), run_id)
         exit(1)
-    except gaierror as e:
+    except Exception as e:
         # only send alert if splunk should be up
         if u.get_splunk_status() != "down":
             u.run_failed(pb, json_output, "could not connect to splunk", str(e), run_id)
